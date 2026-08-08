@@ -1,6 +1,7 @@
 /**
  * App.tsx — Main application shell
  * Routing: tabs-based SPA (no router dependency)
+ * Premium UI with full feature set
  */
 
 import React, { useState } from 'react';
@@ -10,16 +11,21 @@ import { ApplicantPortal } from './components/ApplicantPortal';
 import { CompanyDashboard } from './components/CompanyDashboard';
 import { StatusTracker } from './components/StatusTracker';
 import { OfferAcceptance } from './components/OfferAcceptance';
+import { JobBoard } from './components/JobBoard';
+import { ActivityLog } from './components/ActivityLog';
 import { useMidnightContext } from './context/MidnightContext';
+import { useApplications } from './context/ApplicationContext';
 
 
-type Tab = 'apply' | 'company' | 'track' | 'accept';
+type Tab = 'jobs' | 'apply' | 'company' | 'track' | 'accept' | 'activity';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
-    { id: 'apply', label: 'Apply Anonymously', icon: '🕵️' },
-    { id: 'company', label: 'Company Dashboard', icon: '🏢' },
-    { id: 'track', label: 'Track Status', icon: '🔍' },
-    { id: 'accept', label: 'Accept Offer', icon: '🤝' },
+    { id: 'jobs', label: 'Job Board', icon: '📋' },
+    { id: 'apply', label: 'Quick Apply', icon: '🕵️' },
+    { id: 'company', label: 'Company', icon: '🏢' },
+    { id: 'track', label: 'Track', icon: '🔍' },
+    { id: 'accept', label: 'Accept', icon: '🤝' },
+    { id: 'activity', label: 'Activity', icon: '📜' },
 ];
 
 function Landing({ onEnter }: { onEnter: () => void }) {
@@ -56,44 +62,79 @@ function Landing({ onEnter }: { onEnter: () => void }) {
                         icon: '🔐',
                         title: 'Private Resume Upload',
                         desc: 'Resume is hashed client-side. Only a cryptographic commitment goes on-chain.',
+                        gradient: 'var(--grad-violet)',
                     },
                     {
                         icon: '🕵️',
                         title: 'Anonymous Application',
                         desc: 'You are identified only by an Application ID. No name, no email, no trace.',
+                        gradient: 'var(--grad-cyan)',
                     },
                     {
                         icon: '🤝',
                         title: 'Selective Identity Reveal',
                         desc: 'Reveal your identity only after receiving an offer — proved with disclose().',
+                        gradient: 'linear-gradient(135deg, #10b981, #34d399)',
                     },
-                ].map(f => (
-                    <div key={f.title} className="card">
-                        <div style={{ fontSize: '2rem', marginBottom: 12 }}>{f.icon}</div>
+                ].map((f, i) => (
+                    <div key={f.title} className="card fade-in-up" style={{ animationDelay: `${0.3 + i * 0.1}s` }}>
+                        <div style={{
+                            width: 48, height: 48, borderRadius: 'var(--radius-sm)',
+                            background: f.gradient, display: 'grid', placeItems: 'center',
+                            fontSize: '1.5rem', marginBottom: 16, boxShadow: '0 4px 15px rgba(0,0,0,0.3)'
+                        }}>
+                            {f.icon}
+                        </div>
                         <h3 style={{ marginBottom: 8 }}>{f.title}</h3>
-                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{f.desc}</p>
-                        <div className="proof-label" style={{ marginTop: 12 }}>
-                            <span>🛡️</span> Proved without revealing your input
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 14 }}>{f.desc}</p>
+                        <div className="proof-label">
+                            <span>🛡️</span> Zero-knowledge verified
                         </div>
                     </div>
                 ))}
             </div>
 
-            {/* Privacy story */}
-            <div className="card" style={{ maxWidth: 700, margin: '32px auto 0', textAlign: 'left' }}>
-                <h3 style={{ marginBottom: 12 }}>🔬 How Privacy Works</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            {/* How it works pipeline */}
+            <div className="card" style={{ maxWidth: 800, margin: '40px auto 0', textAlign: 'center' }}>
+                <h3 style={{ marginBottom: 8 }}>🔄 How it Works</h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 24 }}>
+                    Your complete privacy-preserving hiring journey
+                </p>
+                <div className="pipeline">
+                    {[
+                        { label: 'Browse', icon: '📋' },
+                        { label: 'Upload', icon: '📄' },
+                        { label: 'Prove', icon: '🔐' },
+                        { label: 'Review', icon: '⭐' },
+                        { label: 'Accept', icon: '🤝' },
+                    ].map((s, i) => (
+                        <div key={s.label} className={`pipeline-step ${i < 3 ? 'complete' : i === 3 ? 'active' : ''}`}>
+                            <div className="pipeline-dot">{s.icon}</div>
+                            <span className="pipeline-label">{s.label}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Privacy comparison */}
+            <div className="card" style={{ maxWidth: 700, margin: '24px auto 0', textAlign: 'left' }}>
+                <h3 style={{ marginBottom: 16 }}>🔬 Privacy Architecture</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
                     <div>
-                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>🌐 Public (On-Chain)</p>
-                        <div className="badge badge-applied" style={{ marginBottom: 6, display: 'block', width: 'fit-content' }}>Application ID (hash)</div>
-                        <div className="badge badge-shortlisted" style={{ marginBottom: 6, display: 'block', width: 'fit-content' }}>Application Status</div>
-                        <div className="badge badge-offered" style={{ marginBottom: 6, display: 'block', width: 'fit-content' }}>Pipeline Counters</div>
+                        <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>🌐 Public (On-Chain)</p>
+                        {['Application ID (hash)', 'Application Status', 'Pipeline Counters'].map(label => (
+                            <div key={label} className="badge badge-applied" style={{ marginBottom: 6, display: 'block', width: 'fit-content' }}>
+                                ✓ {label}
+                            </div>
+                        ))}
                     </div>
                     <div>
-                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>🔒 Private (Never On-Chain)</p>
-                        <div className="badge badge-rejected" style={{ marginBottom: 6, display: 'block', width: 'fit-content' }}>Resume Content</div>
-                        <div className="badge badge-rejected" style={{ marginBottom: 6, display: 'block', width: 'fit-content' }}>Name &amp; Email</div>
-                        <div className="badge badge-rejected" style={{ marginBottom: 6, display: 'block', width: 'fit-content' }}>Applicant Secret</div>
+                        <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>🔒 Private (Never On-Chain)</p>
+                        {['Resume Content', 'Name & Email', 'Applicant Secret'].map(label => (
+                            <div key={label} className="badge badge-rejected" style={{ marginBottom: 6, display: 'block', width: 'fit-content' }}>
+                                ✗ {label}
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>
@@ -103,8 +144,12 @@ function Landing({ onEnter }: { onEnter: () => void }) {
 
 export default function App() {
     const { isConnected } = useMidnightContext();
+    const { applications, activities, clearAllData } = useApplications();
     const [showPortal, setShowPortal] = useState(false);
-    const [activeTab, setActiveTab] = useState<Tab>('apply');
+    const [activeTab, setActiveTab] = useState<Tab>('jobs');
+
+    const offeredCount = applications.filter(a => a.status === 'OFFERED').length;
+    const totalApps = applications.length;
 
     return (
         <>
@@ -115,6 +160,24 @@ export default function App() {
                     <span>Confidential Job Portal</span>
                 </div>
                 <div className="navbar-right">
+                    {showPortal && totalApps > 0 && (
+                        <span className="badge badge-applied" style={{ fontSize: '0.7rem' }}>
+                            {totalApps} app{totalApps !== 1 ? 's' : ''}
+                        </span>
+                    )}
+                    <button
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => {
+                            if (window.confirm('⚠️ Are you sure you want to clear all demo data (Jobs, Applications, Logs)? This cannot be undone.')) {
+                                clearAllData();
+                                window.location.reload();
+                            }
+                        }}
+                        title="Clear Data & Reset Demo"
+                        style={{ padding: '0 8px', fontSize: '1.2rem' }}
+                    >
+                        ⚙️
+                    </button>
                     <WalletConnect compact />
                 </div>
             </nav>
@@ -127,11 +190,13 @@ export default function App() {
                     <div className="container">
                         {!isConnected && (
                             <div style={{ marginBottom: 32 }}>
-                                <div className="alert alert-warning" style={{ marginBottom: 20 }}>
-                                    <span>⚠️</span>
-                                    <div>Connect your Midnight wallet to submit proofs. You can still browse the portal.</div>
+                                <div className="alert alert-info" style={{ marginBottom: 0 }}>
+                                    <span>💡</span>
+                                    <div>
+                                        <strong>Demo Mode Active</strong> — All features work without a wallet.
+                                        Connect your Midnight wallet for real on-chain proofs.
+                                    </div>
                                 </div>
-                                <WalletConnect />
                             </div>
                         )}
 
@@ -145,15 +210,48 @@ export default function App() {
                                     onClick={() => setActiveTab(tab.id)}
                                 >
                                     {tab.icon} {tab.label}
+                                    {tab.id === 'accept' && offeredCount > 0 && (
+                                        <span className="tab-dot" />
+                                    )}
+                                    {tab.id === 'company' && totalApps > 0 && (
+                                        <span className="notification-badge">{totalApps}</span>
+                                    )}
+                                    {tab.id === 'activity' && activities.length > 0 && (
+                                        <span className="notification-badge">{activities.length}</span>
+                                    )}
                                 </button>
                             ))}
                         </div>
 
-                        {/* Tab panels */}
-                        {activeTab === 'apply' && <ApplicantPortal />}
-                        {activeTab === 'company' && <CompanyDashboard />}
-                        {activeTab === 'track' && <StatusTracker />}
-                        {activeTab === 'accept' && <OfferAcceptance />}
+                        {/* Tab panels — always mounted, hidden via CSS to preserve state */}
+                        <div style={{ display: activeTab === 'jobs' ? 'block' : 'none' }}>
+                            <JobBoard />
+                        </div>
+                        <div style={{ display: activeTab === 'apply' ? 'block' : 'none' }}>
+                            <ApplicantPortal />
+                        </div>
+                        <div style={{ display: activeTab === 'company' ? 'block' : 'none' }}>
+                            <CompanyDashboard />
+                        </div>
+                        <div style={{ display: activeTab === 'track' ? 'block' : 'none' }}>
+                            <StatusTracker />
+                        </div>
+                        <div style={{ display: activeTab === 'accept' ? 'block' : 'none' }}>
+                            <OfferAcceptance />
+                        </div>
+                        <div style={{ display: activeTab === 'activity' ? 'block' : 'none' }}>
+                            <ActivityLog />
+                        </div>
+
+                        {/* Footer */}
+                        <footer className="footer">
+                            <p>
+                                Built on <a href="https://midnight.network" target="_blank" rel="noreferrer">Midnight Network</a> — Zero-Knowledge Privacy Layer
+                            </p>
+                            <p style={{ marginTop: 4, fontSize: '0.75rem' }}>
+                                INTO the Midnight — SPPU Bootcamp 2026
+                            </p>
+                        </footer>
                     </div>
                 </div>
             )}

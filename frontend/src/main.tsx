@@ -1,14 +1,18 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.tsx'
-import { MidnightProvider } from './context/MidnightContext.tsx'
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App'
+import { MidnightProvider } from './context/MidnightContext'
+import { ApplicationProvider } from './context/ApplicationContext'
+import { ToastProvider } from './context/ToastContext'
 
-createRoot(document.getElementById('root')!).render(
-    <StrictMode>
+ReactDOM.createRoot(document.getElementById('root')!).render(
+    <React.StrictMode>
         <MidnightProvider>
-            <App />
+            <ApplicationProvider>
+                <ToastProvider>
+                    <App />
+                </ToastProvider>
+            </ApplicationProvider>
         </MidnightProvider>
-    </StrictMode>,
+    </React.StrictMode>,
 )
-
