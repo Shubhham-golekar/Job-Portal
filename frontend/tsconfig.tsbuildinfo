@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/components/applicantportal.tsx","./src/components/companydashboard.tsx","./src/components/offeracceptance.tsx","./src/components/statustracker.tsx","./src/components/walletconnect.tsx","./src/hooks/usemidnight.ts"],"version":"5.9.3"}

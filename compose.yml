@@ -1,0 +1,40 @@
+services:
+  # ── Midnight devnet node (RPC :9944, WS :9944) ──────────────
+  node:
+    image: ghcr.io/midnight-ntwrk/midnight-node:latest
+    container_name: midnight-node
+    ports:
+      - "9944:9944"
+    environment:
+      - MIDNIGHT_NETWORK=dev
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9944"]
+      interval: 10s
+      retries: 10
+
+  # ── Indexer (REST :8088) ─────────────────────────────────────
+  indexer:
+    image: ghcr.io/midnight-ntwrk/midnight-indexer:latest
+    container_name: midnight-indexer
+    ports:
+      - "8088:8088"
+    environment:
+      - NODE_URL=ws://node:9944
+    depends_on:
+      node:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8088/api/v1/status"]
+      interval: 10s
+      retries: 15
+
+  # ── ZK Proof Server (:6300) ──────────────────────────────────
+  proof-server:
+    image: ghcr.io/midnight-ntwrk/midnight-proof-server:latest
+    container_name: midnight-proof-server
+    ports:
+      - "6300:6300"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:6300/health"]
+      interval: 10s
+      retries: 15

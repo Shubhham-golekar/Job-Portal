@@ -1,0 +1,4 @@
+/* redirects file for Netlify */
+/* (also in netlify.toml — belt-and-suspenders) */
+/*
+/* All routes → index.html (SPA)

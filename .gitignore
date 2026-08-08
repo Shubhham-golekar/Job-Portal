@@ -1,0 +1,12 @@
+node_modules/
+managed/
+.midnight-state.json
+.midnight-wallet-state/
+*.env.local
+.env.local
+frontend/node_modules/
+frontend/dist/
+dist/
+.DS_Store
+*.log
+coverage/

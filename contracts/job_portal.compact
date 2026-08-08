@@ -1,0 +1,200 @@
+// ============================================================
+//  Confidential Job Application Portal — Compact Smart Contract
+//  Network: Midnight Preview
+//
+//  PUBLIC (on-chain, visible to anyone):
+//    - applications: map<Bytes<32>, ApplicationState>
+//        • key   = application_id  (SHA-256 hash of resume bytes)
+//        • value = ApplicationState { status, shortlisted_by_company }
+//    - total_applications: Counter
+//    - total_shortlisted:  Counter
+//    - company_address:    Bytes<32>   (set once at deployment)
+//
+//  PRIVATE (witness / ZK-proved, NEVER on-chain):
+//    - resume_bytes:    the raw resume content
+//    - applicant_secret: a per-applicant nonce/secret
+//    - real_name:       applicant's human-readable identity
+//    - real_email:      applicant's contact email
+//
+//  SELECTIVE DISCLOSURE (via disclose()):
+//    - identity_hash: committed on-chain; actual name/email revealed
+//      ONLY by the applicant, ONLY after company extends an offer,
+//      using the disclose() opcode.  Observer sees nothing until then.
+// ============================================================
+
+pragma language_version >= 0.14.0;
+
+import CompactStandardLibrary;
+
+// Application lifecycle statuses
+enum ApplicationStatus {
+  APPLIED,
+  SHORTLISTED,
+  OFFERED,
+  ACCEPTED,
+  REJECTED
+}
+
+// On-chain record per application — contains NO personal information
+struct ApplicationState {
+  status: ApplicationStatus;
+  timestamp: Uint<64>;
+}
+
+// ── Ledger State (PUBLIC) ────────────────────────────────────
+ledger {
+  // Owner / hiring-company address (set at construction)
+  company_address: Bytes<32>;
+
+  // application_id → application record
+  applications: Map<Bytes<32>, ApplicationState>;
+
+  // Global counters (observable by anyone — useful for dashboards)
+  total_applications: Counter;
+  total_shortlisted:  Counter;
+  total_offered:      Counter;
+  total_accepted:     Counter;
+}
+
+// ── Circuit 1: apply_anonymous ───────────────────────────────
+// Applicant proves they have a valid resume (by hashing it)
+// WITHOUT revealing resume content, name, or email.
+// The application_id (= SHA-256 of resume ++ secret) is stored on-chain.
+circuit apply_anonymous(
+  // PRIVATE witnesses — proved, never published
+  resume_bytes:     Bytes<1024>,   // raw resume content (private)
+  applicant_secret: Bytes<32>      // per-applicant random nonce (private)
+): [] {
+  // Derive a deterministic, collision-resistant application ID
+  const application_id: Bytes<32> =
+    sha256(pad(1056, resume_bytes ++ applicant_secret));
+
+  // Enforce: this application must not already exist
+  require(
+    !applications.member(application_id),
+    "Application already submitted"
+  );
+
+  // Write the public record (status only — no personal data)
+  applications.insert(
+    application_id,
+    ApplicationState {
+      status:    ApplicationStatus.APPLIED,
+      timestamp: current_time() as Uint<64>
+    }
+  );
+
+  total_applications.increment(1);
+}
+
+// ── Circuit 2: shortlist_candidate ──────────────────────────
+// Company (authenticated by company_address) marks an application
+// as shortlisted.  Only the on-chain status flips — identity is
+// still hidden.
+circuit shortlist_candidate(
+  application_id: Bytes<32>,    // public — the opaque ID to promote
+  company_secret: Bytes<32>     // PRIVATE witness — company auth token
+): [] {
+  // Derive company address from secret and verify against ledger
+  const derived_addr: Bytes<32> = sha256(pad(32, company_secret));
+  require(
+    derived_addr == company_address,
+    "Caller is not the hiring company"
+  );
+
+  // Application must exist and be in APPLIED state
+  require(
+    applications.member(application_id),
+    "Application not found"
+  );
+  const current: ApplicationState = applications.lookup(application_id);
+  require(
+    current.status == ApplicationStatus.APPLIED,
+    "Application is not in APPLIED state"
+  );
+
+  // Flip status
+  applications.insert(
+    application_id,
+    ApplicationState {
+      status:    ApplicationStatus.SHORTLISTED,
+      timestamp: current_time() as Uint<64>
+    }
+  );
+
+  total_shortlisted.increment(1);
+}
+
+// ── Circuit 3: extend_offer ──────────────────────────────────
+// Company extends an offer to a shortlisted candidate.
+circuit extend_offer(
+  application_id: Bytes<32>,
+  company_secret: Bytes<32>     // PRIVATE witness
+): [] {
+  const derived_addr: Bytes<32> = sha256(pad(32, company_secret));
+  require(derived_addr == company_address, "Not the company");
+
+  require(applications.member(application_id), "Application not found");
+  const current: ApplicationState = applications.lookup(application_id);
+  require(
+    current.status == ApplicationStatus.SHORTLISTED,
+    "Must be shortlisted first"
+  );
+
+  applications.insert(
+    application_id,
+    ApplicationState {
+      status:    ApplicationStatus.OFFERED,
+      timestamp: current_time() as Uint<64>
+    }
+  );
+
+  total_offered.increment(1);
+}
+
+// ── Circuit 4: reveal_and_accept ────────────────────────────
+// After receiving an offer, the applicant:
+//   1. Proves they own the application (knowledge of resume + secret).
+//   2. Uses disclose() to selectively reveal their real identity.
+//   3. Accepts the offer — status becomes ACCEPTED.
+//
+// The disclose() call publishes identity_hash on-chain.
+// The actual name/email remain private unless the applicant sends
+// them off-chain through a secure channel.
+circuit reveal_and_accept(
+  resume_bytes:     Bytes<1024>,   // PRIVATE — proves ownership
+  applicant_secret: Bytes<32>,     // PRIVATE — proves ownership
+  real_name:        Bytes<64>,     // PRIVATE — identity (not stored!)
+  real_email:       Bytes<32>      // PRIVATE — identity (not stored!)
+): [] {
+  // Re-derive the application ID — proves applicant knows the inputs
+  const application_id: Bytes<32> =
+    sha256(pad(1056, resume_bytes ++ applicant_secret));
+
+  require(applications.member(application_id), "Application not found");
+  const current: ApplicationState = applications.lookup(application_id);
+  require(
+    current.status == ApplicationStatus.OFFERED,
+    "No offer extended yet"
+  );
+
+  // Commit a hash of the identity — publicly proves identity was disclosed
+  // without revealing the raw name/email to uninvolved chain observers.
+  const identity_commitment: Bytes<32> =
+    sha256(pad(96, real_name ++ real_email ++ applicant_secret));
+
+  // disclose() — the ZK proof attests that the applicant computed this
+  // commitment correctly from validated private inputs.
+  disclose(identity_commitment);
+
+  // Mark accepted
+  applications.insert(
+    application_id,
+    ApplicationState {
+      status:    ApplicationStatus.ACCEPTED,
+      timestamp: current_time() as Uint<64>
+    }
+  );
+
+  total_accepted.increment(1);
+}

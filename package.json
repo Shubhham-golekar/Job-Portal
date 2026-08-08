@@ -1,0 +1,58 @@
+{
+  "name": "confidential-job-portal",
+  "version": "1.0.0",
+  "description": "Confidential Job Application Portal — Midnight Network dApp",
+  "private": true,
+  "scripts": {
+    "compile": "compact compile contracts/job_portal.compact --output managed",
+    "setup": "node --loader ts-node/esm src/setup.ts",
+    "deploy": "node --loader ts-node/esm src/deploy.ts",
+    "cli": "node --loader ts-node/esm src/cli.ts",
+    "network:up": "docker compose up -d",
+    "network:down": "docker compose down",
+    "network:logs": "docker compose logs -f",
+    "test": "npx vitest run",
+    "test:watch": "npx vitest",
+    "frontend:dev": "npm run dev --prefix frontend",
+    "frontend:build": "npm run build --prefix frontend",
+    "frontend:preview": "npm run preview --prefix frontend"
+  },
+  "dependencies": {
+    "cross-env": "^7.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  },
+  "peerDependencies": {
+    "@midnight-ntwrk/compact-runtime": "*",
+    "@midnight-ntwrk/midnight-js-contracts": "*",
+    "@midnight-ntwrk/midnight-js-network-id": "*",
+    "@midnight-ntwrk/midnight-js-types": "*",
+    "@midnight-ntwrk/midnight-js-testing": "*",
+    "@midnight-ntwrk/midnight-js-wallet": "*"
+  },
+  "peerDependenciesMeta": {
+    "@midnight-ntwrk/compact-runtime": {
+      "optional": true
+    },
+    "@midnight-ntwrk/midnight-js-contracts": {
+      "optional": true
+    },
+    "@midnight-ntwrk/midnight-js-network-id": {
+      "optional": true
+    },
+    "@midnight-ntwrk/midnight-js-types": {
+      "optional": true
+    },
+    "@midnight-ntwrk/midnight-js-testing": {
+      "optional": true
+    },
+    "@midnight-ntwrk/midnight-js-wallet": {
+      "optional": true
+    }
+  },
+  "type": "module"
+}
