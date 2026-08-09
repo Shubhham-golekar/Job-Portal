@@ -1,6 +1,7 @@
 # Confidential Job Application Portal
 
 - **Live Demo:** [https://job-portal-xkdg.vercel.app/](https://job-portal-xkdg.vercel.app/)
+- **Demo Video:** [https://www.loom.com/share/cea4ca6c0dd246d4bb720fd290f52ec1](https://www.loom.com/share/cea4ca6c0dd246d4bb720fd290f52ec1)
 
 A zero-knowledge job application platform built on **Midnight Network** where applicants submit resumes privately, companies see only shortlisted candidates (no identities), and identity is revealed only after selection — all proved with ZK cryptography.
 
