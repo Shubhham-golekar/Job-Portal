@@ -1,5 +1,7 @@
 # Confidential Job Application Portal
 
+[![CI Pipeline](https://github.com/Shubhham-golekar/Job-Portal/actions/workflows/ci.yml/badge.svg)](https://github.com/Shubhham-golekar/Job-Portal/actions/workflows/ci.yml)
+
 - **Live Demo:** [https://job-portal-xkdg.vercel.app/](https://job-portal-xkdg.vercel.app/)
 - **Demo Video:** [https://www.loom.com/share/cea4ca6c0dd246d4bb720fd290f52ec1](https://www.loom.com/share/cea4ca6c0dd246d4bb720fd290f52ec1)
 
@@ -28,7 +30,7 @@ The hiring process exposes applicants to bias the moment they share a name, phot
 - **Selective Identity Reveal** — The `reveal_and_accept` circuit uses `disclose()` to commit an `identity_commitment = sha256(name ++ email ++ secret)` on-chain. Raw name/email are proved as a ZK witness and immediately discarded — never stored.
 - **Interview Status Tracker** — Applicants check their status using only their Application ID — zero login required.
 
-### Privacy Story (Public vs Private)
+### Privacy Model: What an observer can and cannot learn
 
 | Data | Visibility | Where |
 |------|-----------|-------|
