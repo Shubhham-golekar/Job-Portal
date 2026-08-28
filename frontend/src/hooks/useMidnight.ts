@@ -5,12 +5,19 @@
  *   window.midnight.<walletId> = { rdns, name, icon, apiVersion, connect }
  *   connect(ServiceUriConfig) → Promise<DAppProviderAPI>
  *
+ * Circuit-call flow:
+ *  1. connect() — triggers 1AM wallet popup, stores live API in module scope
+ *  2. setNetworkId(networkId) — MUST be called before any circuit transaction
+ *     so the Midnight SDK routes proofs to the correct network services
+ *  3. submitCircuitCall(circuitFn) — calls setNetworkId then invokes the
+ *     circuit function through the DApp Connector (prover + indexer + node)
+ *
  * Privacy contract:
  *  • Private witnesses are NEVER stored in React state.
  *  • Only public data (address, network, contract state) enters state.
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 
 // ── Types ────────────────────────────────────────────────────────
 export type NetworkId = 'preview' | 'dev' | 'mainnet';
@@ -91,6 +98,12 @@ function discoverWallet(): { found: boolean; api?: unknown } {
 interface LiveApi {
     getNetworkId: () => Promise<string>;
     getUnshieldedAddress: () => Promise<string>;
+    // Optional: present on DApp Connector v2 connected API
+    // Used to route ZK proofs to the correct network before submitting
+    setNetworkId?: (networkId: string) => void | Promise<void>;
+    // submitTransaction is the real circuit-call entry point
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    submitTransaction?: (tx: unknown) => Promise<any>;
 }
 
 // ── Resolve live API from any known wallet shape ─────────────────
@@ -187,6 +200,9 @@ export function useMidnight() {
         walletFound: false,
     });
 
+    // Store the live connected API for circuit calls
+    const liveApiRef = useRef<LiveApi | null>(null);
+
     // Poll for wallet injection (extension may load after page)
     useEffect(() => {
         const check = () => {
@@ -212,6 +228,25 @@ export function useMidnight() {
             // Get a live API — this triggers the 1AM wallet popup
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const liveApi = await resolveLiveApi(api as any);
+
+            // ── setNetworkId — MUST run before any circuit call ──────
+            // This tells the Midnight SDK which network's proof-server,
+            // indexer, and node to use when submitting ZK transactions.
+            if (typeof liveApi.setNetworkId === 'function') {
+                await liveApi.setNetworkId(EXPECTED_NETWORK);
+                if (env['MODE'] === 'development') {
+                    console.info(`[useMidnight] setNetworkId("${EXPECTED_NETWORK}") called.`);
+                }
+            } else {
+                // DApp Connector v2 handles network routing via SERVICE_CONFIG
+                // passed to connect() above — no explicit setNetworkId needed.
+                if (env['MODE'] === 'development') {
+                    console.info('[useMidnight] setNetworkId not available; network set via SERVICE_CONFIG.');
+                }
+            }
+
+            // Store live API for subsequent circuit calls
+            liveApiRef.current = liveApi;
 
             const rawNetworkId = await liveApi.getNetworkId();
             // The 1AM wallet v4 returns address as { unshieldedAddress: 'mn_addr_...' }
@@ -263,6 +298,7 @@ export function useMidnight() {
     }, []);
 
     const disconnect = useCallback(() => {
+        liveApiRef.current = null;
         setState(s => ({
             ...s,
             isConnected: false,
@@ -276,6 +312,32 @@ export function useMidnight() {
         setState(s => ({ ...s, error: null }));
     }, []);
 
+    /**
+     * submitCircuitCall — the single entry-point for all circuit transactions.
+     *
+     * Always calls setNetworkId(EXPECTED_NETWORK) before submitting so the
+     * Midnight SDK uses the correct proof-server and indexer.
+     *
+     * Usage (from any component):
+     *   const { submitCircuitCall } = useMidnight();
+     *   const appId = await submitCircuitCall(async (api) => {
+     *     return api.submitTransaction(applyAnonymousTx);
+     *   });
+     */
+    const submitCircuitCall = useCallback(async <T>(
+        circuitFn: (liveApi: LiveApi) => Promise<T>
+    ): Promise<T> => {
+        const liveApi = liveApiRef.current;
+        if (!liveApi) {
+            throw new Error('Wallet not connected. Call connect() first.');
+        }
+        // Ensure network is set before every circuit call
+        if (typeof liveApi.setNetworkId === 'function') {
+            await liveApi.setNetworkId(EXPECTED_NETWORK);
+        }
+        return circuitFn(liveApi);
+    }, []);
+
     return {
         ...state,
         expectedNetwork: EXPECTED_NETWORK,
@@ -283,6 +345,7 @@ export function useMidnight() {
         disconnect,
         clearError,
         contractAddress: CONTRACT_ADDRESS,
+        submitCircuitCall,
     };
 }
 

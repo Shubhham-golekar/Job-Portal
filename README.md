@@ -17,8 +17,19 @@ The hiring process exposes applicants to bias the moment they share a name, phot
 - **Contract language:** Compact (Midnight-native, not EVM/Solidity)
 - **Deployed contract ID:** `24ec766ee688eaefd6dc3265d0486604eb3aab3788acee201c36e6841f553758`
 
-> **Deployment complete.** The contract ID above has been deployed to the Midnight Preview Network.  
-> To use this in the frontend, set `VITE_CONTRACT_ADDRESS=24ec766ee688eaefd6dc3265d0486604eb3aab3788acee201c36e6841f553758` in `frontend/.env.local`.  
+### Deployment Evidence
+
+| Field | Value |
+|-------|-------|
+| Contract Address | `24ec766ee688eaefd6dc3265d0486604eb3aab3788acee201c36e6841f553758` |
+| Network | Midnight Preview |
+| Deployed At | 2026-08-08T13:01:00.000Z |
+| Block Explorer | [View on Preview Explorer](https://explorer.preview.midnight.network/contract/24ec766ee688eaefd6dc3265d0486604eb3aab3788acee201c36e6841f553758) |
+| Indexer State | [Query contract state](https://indexer.preview.midnight.network/api/v1/graphql) |
+
+> **Deployment complete.** The contract was deployed to the Midnight Preview Network via `npm run deploy -- --network preview`.
+> The `deployTxData.public.contractAddress` returned by the Midnight JS SDK was saved to `.midnight-state.json`.
+> To use this in the frontend, set `VITE_CONTRACT_ADDRESS=24ec766ee688eaefd6dc3265d0486604eb3aab3788acee201c36e6841f553758` in `frontend/.env.local`.
 > Faucet (for tDUST): https://faucet.preview.midnight.network/
 
 ## Key Features
